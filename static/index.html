@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#10131d" />
+  <title>Emotive — Emotion Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/scripts.js" defer></script>
+</head>
+<body>
+  <div class="orb one"></div><div class="orb two"></div>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="brand-mark">◌</div><div>emotive <span>/ emotion intelligence</span></div></div>
+      <div class="status"><span class="dot" id="healthDot"></span><span id="healthText">Connecting to model</span></div>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">A closer read on language</div>
+      <h1>Understand the feeling<br><span class="gradient">behind the words.</span></h1>
+      <p>Enter a sentence and let a fine-tuned BERT model estimate the emotion it expresses across six categories.</p>
+    </section>
+
+    <main class="workspace">
+      <section class="card input-card">
+        <div class="card-head"><div class="card-title">Your text</div><div class="step">01 / INPUT</div></div>
+        <label for="userText">What would you like to analyse?</label>
+        <textarea id="userText" maxlength="2000" placeholder="Write a thought, a message, or a moment in your own words..."></textarea>
+        <div class="input-meta"><span>Up to 2,000 characters</span><span id="charCount">0 / 2000</span></div>
+        <div class="samples">
+          <div class="samples-label">Try an example</div>
+          <div class="chips">
+            <button class="chip" data-text="I finally achieved something I have been working towards for months.">A small victory</button>
+            <button class="chip" data-text="I miss the way things used to be and I cannot stop thinking about it.">A reflective moment</button>
+            <button class="chip" data-text="I am nervous about what tomorrow might bring.">A little uncertainty</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="analyze" id="analyzeBtn">Analyse emotion <span aria-hidden="true">↗</span></button>
+          <button class="clear" id="clearBtn">Clear</button>
+        </div>
+        <div class="error" id="errorBox" role="alert"></div>
+      </section>
+
+      <section class="card result-card" aria-live="polite">
+        <div class="card-head"><div class="card-title">Analysis</div><div class="step">02 / RESULT</div></div>
+        <div class="empty" id="emptyState">
+          <div class="empty-icon">✳</div>
+          <h3>Your result will appear here</h3>
+          <p>Submit a sentence to see the model's predicted emotion and its confidence across all six classes.</p>
+        </div>
+        <div class="result-content" id="resultContent">
+          <div class="result-top">
+            <div class="emotion-icon" id="emotionEmoji">✨</div>
+            <div><div class="result-kicker">Dominant emotion</div><div class="emotion-name" id="emotionName">—</div><div class="confidence" id="confidenceText">—</div></div>
+          </div>
+          <div class="section-label"><span>Emotion distribution</span><span>Model confidence</span></div>
+          <div id="bars"></div>
+          <div class="insight" id="insightText"><strong>Reading:</strong> The values represent the model's predicted class probabilities, not a definitive measure of how someone feels.</div>
+        </div>
+      </section>
+    </main>
+    <footer><span>EMOTIVE · BERT-POWERED TEXT CLASSIFICATION</span><span>Predictions are estimates, not psychological assessments.</span></footer>
+  </div>
+</body>
+</html>
