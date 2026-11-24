@@ -1,1 +1,2 @@
 Artifacts/Bert/** filter=lfs diff=lfs merge=lfs -text
+Artifacts/Bert_ONNX/bert_model_int8.onnx filter=lfs diff=lfs merge=lfs -text

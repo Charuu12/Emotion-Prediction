@@ -1,9 +1,24 @@
+# Python environments
 .venv/
+.venv-onnx/
 venv/
+
+# Python cache
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# IDE and system files
 .vscode/
 .env
 .DS_Store
+
+# Backup models
 Artifacts/Bert/
+Artifacts/Bert_Backup/
+
+# Unoptimized ONNX model
+Artifacts/Bert_ONNX/bert_model.onnx
+
+# Unused BiGRU model
+Artifacts/BiGRU_Modle.keras

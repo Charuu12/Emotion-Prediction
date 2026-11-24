@@ -3,37 +3,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
 from pydantic import BaseModel, Field
 
 from pathlib import Path
-from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
+from transformers import AutoTokenizer
 
-import tensorflow as tf
+import onnxruntime as ort
 import numpy as np
 import re
 
-"""
-1. We are going to make some constants like:
-A. Model Path (BiGRU)
-B. Tokenizer Path
-C. Max Sequence Length
-D. Emotion Labels
-E. Emotion emojis
-"""
+# 1. Configuration
 
-# A. BERT Model Path
-# model_path = "Artifacts/Bert"
 BASE_DIR = Path(__file__).resolve().parent
-model_path = BASE_DIR / "Artifacts" / "Bert"
 
-# B. Maximum Sequence Length
+model_path = BASE_DIR / "Artifacts" / "Bert_ONNX" / "bert_model_int8.onnx"
+tokenizer_path = BASE_DIR / "Artifacts" / "Bert"
+
 max_sequence_length = 128
 
-# C. Emotion Labels
 emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
 
-# D. Emotion Emojis
 EMOTION_EMOJIS = {
     "sadness": "😢",
     "joy": "😄",
@@ -43,30 +32,19 @@ EMOTION_EMOJIS = {
     "surprise": "😲",
 }
 
-"""
-2. Preprocess the upcoming text
-Cleans raw text so it matches the format used while training.
-A. Convert the text to lowercase. -done
-B. Remove apostrophes (e.g can't -> cant). -done
-C. Remove Special Characters and Punctuation. -done
-D. Remove extra spaces -done
-"""
+# 2. Text preprocessing
+
 def preprocess_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r"'", "", text)
     text = re.sub(r"[^a-z0-9\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
-
     return text
 
-"""
-3. Request and Response Schemas
-A. Text Input -> Input schema: the text sent by user. 
-B. Prediciton Response -> Output schema: the emotion to predict. 
-C. Health Response (Server health check)
-"""
-class TextInput(BaseModel):
 
+# 3. Request and response schemas
+
+class TextInput(BaseModel):
     text: str = Field(
         ...,
         min_length=1,
@@ -75,46 +53,47 @@ class TextInput(BaseModel):
         json_schema_extra={"example": "I feel so happy and excited"}
     )
 
+
 class PredictionResponse(BaseModel):
     text: str
     predicted_emotion: str
     confidence: float
     all_probabilites: dict[str, float]
 
+
 class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
 
 
-"""
-4. Model Loading and LifeSpan Management
-Load the model and toknizer once the server starts up.
-"""
+# 4. Model loading
+
 dl_model = {}
 
-@asynccontextmanager 
+
+@asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    print("Loading BERT model and tokenizer...")
+    print("Loading ONNX INT8 model and tokenizer...")
 
-    # Load BERT tokenizer
     dl_model["Tokenizer"] = AutoTokenizer.from_pretrained(
-        str(model_path)
+        str(tokenizer_path)
     )
 
-    # Load trained BERT model
-    dl_model["BERT"] = TFAutoModelForSequenceClassification.from_pretrained(
-        str(model_path)
+    dl_model["BERT"] = ort.InferenceSession(
+        str(model_path),
+        providers=["CPUExecutionProvider"]
     )
 
-    print("BERT model and tokenizer loaded successfully!")
+    print("ONNX INT8 model and tokenizer loaded successfully!")
 
-    yield #Pause, model is laoded and server is running and at this point model wait karega for request
+    yield
 
     dl_model.clear()
 
 
-#5. Mount the static files to the FastAPI app
+# 5. FastAPI application
+
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
@@ -125,23 +104,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount('/static', StaticFiles(directory="static"), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=str(BASE_DIR / "static")),
+    name="static"
+)
 
-# 6. API Endpoints.
-@app.get('/', include_in_schema=False)
+
+# 6. API endpoints
+
+@app.get("/", include_in_schema=False)
 def server_ui():
-    return FileResponse('static/index.html')
+    return FileResponse(str(BASE_DIR / "static" / "index.html"))
 
 
-@app.get('/health', response_model=HealthResponse)
+@app.get("/health", response_model=HealthResponse)
 def health_check():
     return HealthResponse(
         status="Server is running",
         model_loaded=bool(dl_model)
     )
 
-@app.post('/predict', response_model=PredictionResponse)
+
+@app.post("/predict", response_model=PredictionResponse)
 def predict_emotion(text_input: TextInput):
+
     BERT_model = dl_model.get("BERT")
     tokenizer_model = dl_model.get("Tokenizer")
 
@@ -154,28 +141,40 @@ def predict_emotion(text_input: TextInput):
     # 1. Preprocess input
     cleaned_text = preprocess_text(text_input.text)
 
-    # 2. Tokenize input using BERT tokenizer
+    # 2. Tokenize input
     inputs = tokenizer_model(
         cleaned_text,
-        return_tensors="tf",
+        return_tensors="np",
         padding="max_length",
         truncation=True,
         max_length=max_sequence_length
     )
 
-    # 3. BERT prediction
-    outputs = BERT_model(
-        inputs,
-        training=False
+    # 3. Prepare ONNX inputs
+    onnx_inputs = {
+        "input_ids": inputs["input_ids"].astype(np.int32),
+        "attention_mask": inputs["attention_mask"].astype(np.int32),
+        "token_type_ids": inputs["token_type_ids"].astype(np.int32)
+    }
+
+    # 4. ONNX prediction
+    outputs = BERT_model.run(
+        ["logits"],
+        onnx_inputs
     )
 
-    # 4. Convert logits into probabilities
-    probabilities = tf.nn.softmax(
-        outputs.logits,
-        axis=-1
-    ).numpy()[0]
+    logits = outputs[0]
 
-    # 5. Find the emotion with highest probability
+    # 5. Convert logits into probabilities
+    logits = logits - np.max(logits, axis=-1, keepdims=True)
+
+    exp_values = np.exp(logits)
+
+    probabilities = (
+        exp_values / np.sum(exp_values, axis=-1, keepdims=True)
+    )[0]
+
+    # 6. Find highest probability
     top_emotion_index = int(np.argmax(probabilities))
 
     all_probabilites = {
@@ -183,7 +182,7 @@ def predict_emotion(text_input: TextInput):
         for prob, label in zip(probabilities, emotion_labels)
     }
 
-    # 6. Return response
+    # 7. Return response
     return PredictionResponse(
         text=text_input.text,
         predicted_emotion=emotion_labels[top_emotion_index],
