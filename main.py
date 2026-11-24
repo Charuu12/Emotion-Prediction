@@ -17,8 +17,7 @@ import re
 BASE_DIR = Path(__file__).resolve().parent
 
 model_path = BASE_DIR / "Artifacts" / "Bert_ONNX" / "bert_model_int8.onnx"
-tokenizer_path = BASE_DIR / "Artifacts" / "Bert"
-
+tokenizer_path = BASE_DIR / "Artifacts" / "Bert_ONNX"
 max_sequence_length = 128
 
 emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
