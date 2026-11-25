@@ -2,9 +2,9 @@
 
 ### [🚀 Try the Live Application](https://emotion-prediction-8ab6.onrender.com)
 
-EmotIQ is a deep learning-based emotion classification system that analyzes text and identifies the emotion expressed by the writer. It uses NLP and Transformer-based models to classify text into six emotions: **Sadness, Joy, Love, Anger, Fear and Surprise.**
+EmotIQ is a deep learning-based emotion classification system that analyzes text and identifies the emotion expressed by the writer. It classifies text into six emotions: **Sadness, Joy, Love, Anger, Fear and Surprise.**
 
-The project explores multiple deep learning architectures, compares their performance, and uses transfer learning with pretrained BERT to achieve accurate emotion classification.
+The project explores and compares multiple deep learning architectures, including RNN, LSTM, GRU and BiGRU, before fine-tuning a pretrained BERT model. **BERT was selected as the final model after outperforming the traditional deep learning architectures**, achieving 93.25% test accuracy. The model is integrated into a **FastAPI backend** to deliver real-time emotion predictions through a web application.
 
 ## Key Features
 
